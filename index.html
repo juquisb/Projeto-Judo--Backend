@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Gestão - Projeto Judô</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/notificacoes_justificativas.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div id="app">
+        <!-- Tela de Login -->
+        <div id="login-screen" class="screen active">
+            <div class="login-container">
+                <div class="logo">
+                    <h1>🥋 Judô Portas Abertas</h1>
+                    <p>Sistema de Gestão</p>
+                </div>
+                <form id="login-form">
+                    <div class="form-group">
+                        <label for="username">Usuário</label>
+                        <input type="text" id="username" name="username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Senha</label>
+                        <input type="password" id="password" name="password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Entrar</button>
+                </form>
+                <div id="login-error" class="error-message"></div>
+            </div>
+        </div>
+
+        <!-- Tela Principal (Admin/Sensei) -->
+        <div id="admin-screen" class="screen">
+            <nav class="navbar">
+                <div class="nav-brand">🥋 Judô Portas Abertas</div>
+                <div class="nav-menu">
+                    <a href="#" onclick="showSection('dashboard', event)" class="nav-link active">Dashboard</a>
+                    <a href="#" onclick="showSection('alunos', event)" class="nav-link">Alunos</a>
+                    <a href="#" onclick="showSection('presenca', event)" class="nav-link">Presença</a>
+                    <a href="#" onclick="showSection('avaliacoes', event)" class="nav-link">Avaliações</a>
+                    <a href="#" onclick="showSection('avisos', event)" class="nav-link">Avisos</a>
+                    <a href="#" onclick="showSection('biblioteca', event)" class="nav-link">Biblioteca Técnica</a>
+                    <a href="#" onclick="showSection('usuarios', event)" class="nav-link">Usuários</a>
+                    <a href="#" onclick="showSection('justificativas-admin', event)" class="nav-link">Justificativas</a>
+                    <a href="#" onclick="showSection('rematricula', event)" class="nav-link">Rematrícula</a>
+                    <button onclick="logout()" class="btn btn-small">Sair</button>
+                </div>
+            </nav>
+
+            <div class="container">
+                <!-- Dashboard -->
+                <div id="dashboard" class="section active">
+                    <h2>Dashboard</h2>
+                    <div id="avisos-dashboard" class="avisos-box"></div>
+                    
+                    <div class="filters">
+                        <label>Período:</label>
+                        <input type="date" id="filter-data-inicio" onchange="loadDashboard()">
+                        <input type="date" id="filter-data-fim" onchange="loadDashboard()">
+                        <select id="filter-tipo" onchange="loadDashboard()">
+                            <option value="">Todos</option>
+                            <option value="Criança">Criança</option>
+                            <option value="Adulto">Adulto</option>
+                        </select>
+                    </div>
+
+                    <div class="dashboard-grid">
+                        <div class="card">
+                            <h3>Frequência dos Alunos</h3>
+                            <canvas id="chart-frequencia"></canvas>
+                        </div>
+                        <div class="card">
+                            <h3>Evolução da Frequência</h3>
+                            <canvas id="chart-evolucao"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <h3>Ranking de Frequência</h3>
+                        <table id="ranking-table" class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Posição</th>
+                                    <th>Nome</th>
+                                    <th>Tipo</th>
+                                    <th>Presentes</th>
+                                    <th>Ausentes</th>
+                                    <th>Frequência %</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Alunos -->
+                <div id="alunos" class="section">
+                    <h2>Gestão de Alunos</h2>
+                    <div style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
+                        <button onclick="openAlunoModal()" class="btn btn-primary">+ Novo Aluno</button>
+                        <button onclick="openImportarModal()" class="btn btn-success">📥 Importar em Massa</button>
+                        <a href="/api/alunos/template" class="btn btn-secondary" download>📄 Baixar Template</a>
+                    </div>
+                    <table id="alunos-table" class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Nome</th>
+                                <th>Idade</th>
+                                <th>Graduação</th>
+                                <th>Modalidade</th>
+                                <th>Peso</th>
+                                <th>IMC</th>
+                                <th>Categoria</th>
+                                <th>Status</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <!-- Presença -->
+                <div id="presenca" class="section">
+                    <h2>Controle de Presença</h2>
+                    <div class="filters">
+                        <label>Data:</label>
+                        <input type="date" id="presenca-data" value="" onchange="loadPresencas()">
+                        <button onclick="marcarHoje()" class="btn btn-small">Hoje</button>
+                    </div>
+                    <div id="presenca-lista" class="presenca-lista"></div>
+                </div>
+
+                <!-- Avaliações -->
+                <div id="avaliacoes" class="section">
+                    <h2>Avaliações de Desempenho</h2>
+                    <button onclick="openAvaliacaoModal()" class="btn btn-primary">+ Nova Avaliação</button>
+                    <div class="filters">
+                        <label>Aluno:</label>
+                        <select id="filter-aluno-avaliacao" onchange="loadAvaliacoes()"></select>
+                    </div>
+                    <div id="avaliacoes-lista"></div>
+                </div>
+
+                <!-- Avisos -->
+                <div id="avisos" class="section">
+                    <h2>Quadro de Avisos</h2>
+                    <button onclick="openAvisoModal()" class="btn btn-primary">+ Novo Aviso</button>
+                    <div id="avisos-lista"></div>
+                </div>
+
+                <!-- Biblioteca Técnica -->
+                <div id="biblioteca" class="section">
+                    <h2>Biblioteca Técnica</h2>
+                    <button onclick="openBibliotecaModal()" class="btn btn-primary">+ Novo Conteúdo</button>
+                    <div class="filters">
+                        <label>Filtrar por:</label>
+                        <select id="filter-graduacao-bib" onchange="loadBiblioteca()">
+                            <option value="">Todas as graduações</option>
+                            <option value="Branca">Branca</option>
+                            <option value="Cinza">Cinza</option>
+                            <option value="Azul">Azul</option>
+                            <option value="Amarela">Amarela</option>
+                            <option value="Laranja">Laranja</option>
+                            <option value="Verde">Verde</option>
+                            <option value="Roxa">Roxa</option>
+                            <option value="Marrom">Marrom</option>
+                            <option value="Preta">Preta</option>
+                        </select>
+                        <select id="filter-modalidade-bib" onchange="loadBiblioteca()">
+                            <option value="">Todas as modalidades</option>
+                            <option value="Judô Infantil">Judô Infantil</option>
+                            <option value="Judô Adulto">Judô Adulto</option>
+                            <option value="Iniciação">Iniciação</option>
+                            <option value="Competição">Competição</option>
+                        </select>
+                        <select id="filter-tipo-golpe-bib" onchange="loadBiblioteca()">
+                            <option value="">Todos os tipos</option>
+                        </select>
+                    </div>
+                    <div id="biblioteca-lista" class="biblioteca-grid"></div>
+                </div>
+
+                <!-- Usuários -->
+                <div id="usuarios" class="section">
+                    <h2>Gestão de Usuários</h2>
+                    <button onclick="openUsuarioModal()" class="btn btn-primary">+ Novo Usuário</button>
+                    <button onclick="loadUsuarios()" class="btn btn-secondary">Atualizar Lista</button>
+                    
+                    <!-- Lista de alunos sem login -->
+                    <div style="margin: 20px 0;">
+                        <h3>Alunos sem Login</h3>
+                        <select id="alunos-sem-login" class="form-control" style="margin-bottom: 10px;"></select>
+                        <button onclick="criarLoginParaAluno()" class="btn btn-small">Criar Login para este Aluno</button>
+                    </div>
+                    
+                    <table id="usuarios-table" class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Username</th>
+                                <th>Nome</th>
+                                <th>Perfil</th>
+                                <th>Aluno Vinculado</th>
+                                <th>Criado em</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <!-- Justificativas (Admin) -->
+                <div id="justificativas-admin" class="section">
+                    <h2>Justificativas de Ausência (Admin)</h2>
+                    <div class="filters">
+                        <label>Status:</label>
+                        <select id="filter-status-justificativa" onchange="loadJustificativasAdmin()">
+                            <option value="">Todos</option>
+                            <option value="Pendente">Pendente</option>
+                            <option value="Aprovada">Aprovada</option>
+                            <option value="Rejeitada">Rejeitada</option>
+                        </select>
+                        <select id="filter-aluno-justificativa" onchange="loadJustificativasAdmin()">
+                            <option value="">Todos os alunos</option>
+                        </select>
+                    </div>
+                    <div id="justificativas-admin-lista"></div>
+                </div>
+
+                <!-- Rematrícula -->
+                <div id="rematricula" class="section">
+                    <h2>Rematrícula</h2>
+                    <div class="form-group">
+                        <label>Selecione o aluno:</label>
+                        <select id="aluno-rematricula" class="form-control"></select>
+                        <button onclick="gerarLinkRematricula()" class="btn btn-primary">Gerar Link</button>
+                    </div>
+                    <div id="link-rematricula-result"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tela Principal (Aluno/Responsável) -->
+        <div id="aluno-screen" class="screen">
+            <nav class="navbar">
+                <div class="nav-brand">🥋 Judô Social</div>
+                <div class="nav-menu">
+                    <a href="#" onclick="showSectionAluno('dashboard', event)" class="nav-link active">Início</a>
+                    <a href="#" onclick="showSectionAluno('presenca', event)" class="nav-link">Minhas Presenças</a>
+                    <a href="#" onclick="showSectionAluno('biblioteca', event)" class="nav-link">Biblioteca Técnica</a>
+                    <a href="#" onclick="showSectionAluno('avisos', event)" class="nav-link">Avisos</a>
+                    <a href="#" onclick="showSectionAluno('avaliacoes', event)" class="nav-link">Avaliações</a>
+                    <a href="#" onclick="showSectionAluno('justificativas', event)" class="nav-link">Justificar Ausência</a>
+                    <div class="notificacao-badge-container" onclick="showSectionAluno('notificacoes', event)" style="position: relative; cursor: pointer;">
+                        <a href="#" class="nav-link" onclick="event.preventDefault(); showSectionAluno('notificacoes', event)">🔔</a>
+                        <span id="notificacao-badge" class="notificacao-badge" style="display: none;">0</span>
+                    </div>
+                    <button onclick="logout()" class="btn btn-small">Sair</button>
+                </div>
+            </nav>
+
+            <div class="container">
+                <!-- Dashboard Aluno -->
+                <div id="aluno-dashboard" class="section active">
+                    <h2>Bem-vindo!</h2>
+                    <div id="avisos-aluno" class="avisos-box"></div>
+                    <div class="dashboard-grid">
+                        <div class="card">
+                            <h3>Minha Frequência</h3>
+                            <canvas id="chart-aluno-frequencia"></canvas>
+                        </div>
+                        <div class="card">
+                            <h3>Evolução</h3>
+                            <canvas id="chart-aluno-evolucao"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Presenças Aluno -->
+                <div id="aluno-presenca" class="section">
+                    <h2>Minhas Presenças</h2>
+                    <table id="aluno-presencas-table" class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Data</th>
+                                <th>Status</th>
+                                <th>Justificativa</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <!-- Avaliações Aluno -->
+                <div id="aluno-avaliacoes" class="section">
+                    <h2>Minhas Avaliações</h2>
+                    <p style="color: #666; margin-bottom: 20px;">Aqui você visualiza apenas as avaliações liberadas pelo Sensei.</p>
+                    <div id="aluno-avaliacoes-lista"></div>
+                </div>
+
+                <!-- Biblioteca Técnica Aluno -->
+                <div id="aluno-biblioteca" class="section">
+                    <h2>Biblioteca Técnica</h2>
+                    <div class="filters">
+                        <label>Filtrar por:</label>
+                        <select id="filter-graduacao-bib-aluno" onchange="loadBibliotecaAluno()">
+                            <option value="">Todas as graduações</option>
+                            <option value="Branca">Branca</option>
+                            <option value="Cinza">Cinza</option>
+                            <option value="Azul">Azul</option>
+                            <option value="Amarela">Amarela</option>
+                            <option value="Laranja">Laranja</option>
+                            <option value="Verde">Verde</option>
+                            <option value="Roxa">Roxa</option>
+                            <option value="Marrom">Marrom</option>
+                            <option value="Preta">Preta</option>
+                        </select>
+                        <select id="filter-modalidade-bib-aluno" onchange="loadBibliotecaAluno()">
+                            <option value="">Todas as modalidades</option>
+                            <option value="Judô Infantil">Judô Infantil</option>
+                            <option value="Judô Adulto">Judô Adulto</option>
+                            <option value="Iniciação">Iniciação</option>
+                            <option value="Competição">Competição</option>
+                        </select>
+                    </div>
+                    <div id="biblioteca-lista-aluno" class="biblioteca-grid"></div>
+                </div>
+
+                <!-- Avisos Aluno -->
+                <div id="aluno-avisos" class="section">
+                    <h2>Avisos</h2>
+                    <div id="avisos-aluno-lista"></div>
+                </div>
+
+                <!-- Justificativas de Ausência -->
+                <div id="aluno-justificativas" class="section">
+                    <h2>Justificar Ausência</h2>
+                    <button onclick="openJustificativaModal()" class="btn btn-primary">+ Nova Justificativa</button>
+                    <div id="justificativas-aluno-lista"></div>
+                </div>
+
+                <!-- Notificações -->
+                <div id="aluno-notificacoes" class="section">
+                    <h2>Notificações</h2>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <span id="notificacoes-total"></span>
+                        <button onclick="marcarTodasNotificacoesLidas()" class="btn btn-small">Marcar todas como lidas</button>
+                    </div>
+                    <div id="notificacoes-lista"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modais -->
+    <div id="modal-overlay" class="modal-overlay" onclick="closeModal()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <span class="close-btn" onclick="closeModal()">&times;</span>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>

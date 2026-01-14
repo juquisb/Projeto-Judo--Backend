@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rematrícula - Projeto Judô</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="login-container" style="max-width: 600px;">
+        <div class="logo">
+            <h1>🥋 Judô Social</h1>
+            <p>Rematrícula</p>
+        </div>
+        
+        <div id="rematricula-content">
+            <div class="loading">Carregando informações...</div>
+        </div>
+    </div>
+
+    <script>
+        const token = '{{ token }}';
+        
+        async function loadRematriculaData() {
+            try {
+                const response = await fetch(`/api/rematriculas/token/${token}`);
+                if (!response.ok) {
+                    document.getElementById('rematricula-content').innerHTML = `
+                        <div class="error-message" style="display: block;">
+                            Link inválido ou já utilizado.
+                        </div>
+                    `;
+                    return;
+                }
+                
+                const data = await response.json();
+                
+                document.getElementById('rematricula-content').innerHTML = `
+                    <div class="card">
+                        <h3>Dados do Aluno</h3>
+                        <div class="form-group">
+                            <label>Nome:</label>
+                            <p><strong>${data.nome_completo}</strong></p>
+                        </div>
+                        <div class="form-group">
+                            <label>Tipo:</label>
+                            <p>${data.tipo}</p>
+                        </div>
+                        ${data.data_nascimento ? `
+                            <div class="form-group">
+                                <label>Data de Nascimento:</label>
+                                <p>${new Date(data.data_nascimento).toLocaleDateString('pt-BR')}</p>
+                            </div>
+                        ` : ''}
+                        ${data.nome_responsavel ? `
+                            <div class="form-group">
+                                <label>Responsável:</label>
+                                <p>${data.nome_responsavel}</p>
+                            </div>
+                        ` : ''}
+                        
+                        <hr style="margin: 20px 0;">
+                        
+                        <h3>Confirmar Rematrícula</h3>
+                        <p>Taxa de rematrícula: <strong>R$ 20,00</strong></p>
+                        
+                        <form id="rematricula-form">
+                            <div class="form-group">
+                                <label>
+                                    <input type="checkbox" required> 
+                                    Confirmo os dados e aceito pagar a taxa de rematrícula de R$ 20,00
+                                </label>
+                            </div>
+                            <button type="submit" class="btn btn-primary">Confirmar Rematrícula</button>
+                        </form>
+                        
+                        <div id="rematricula-result"></div>
+                    </div>
+                `;
+                
+                document.getElementById('rematricula-form').addEventListener('submit', confirmarRematricula);
+            } catch (error) {
+                document.getElementById('rematricula-content').innerHTML = `
+                    <div class="error-message" style="display: block;">
+                        Erro ao carregar dados.
+                    </div>
+                `;
+            }
+        }
+        
+        async function confirmarRematricula(e) {
+            e.preventDefault();
+            
+            try {
+                const response = await fetch('/api/rematriculas/confirmar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token: token })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success) {
+                    document.getElementById('rematricula-result').innerHTML = `
+                        <div style="background: #c8e6c9; color: #2e7d32; padding: 15px; border-radius: 8px; margin-top: 20px;">
+                            <strong>Rematrícula confirmada com sucesso!</strong>
+                            <p>O status do aluno foi atualizado para Ativo.</p>
+                        </div>
+                    `;
+                    document.getElementById('rematricula-form').style.display = 'none';
+                } else {
+                    document.getElementById('rematricula-result').innerHTML = `
+                        <div class="error-message" style="display: block;">
+                            ${result.error || 'Erro ao confirmar rematrícula'}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                document.getElementById('rematricula-result').innerHTML = `
+                    <div class="error-message" style="display: block;">
+                        Erro ao processar rematrícula.
+                    </div>
+                `;
+            }
+        }
+        
+        loadRematriculaData();
+    </script>
+</body>
+</html>
+

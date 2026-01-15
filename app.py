@@ -17,7 +17,8 @@ import csv
 from io import StringIO
 
 app = Flask(__name__)
-app.secret_key = secrets.token_hex(32)
+# Usar SECRET_KEY do ambiente em produção, ou gerar uma nova em desenvolvimento
+app.secret_key = os.environ.get('SECRET_KEY', secrets.token_hex(32))
 CORS(app)
 
 # Configuração do banco de dados
@@ -1975,12 +1976,19 @@ def pagina_rematricula(token):
     """Página pública de rematrícula"""
     return render_template('rematricula.html', token=token)
 
+# Inicializar banco de dados na primeira execução
+init_db()
+
 if __name__ == '__main__':
-    # Inicializa o banco de dados
-    init_db()
+    # Configuração para desenvolvimento local
+    port = int(os.environ.get('PORT', 5000))
+    debug = os.environ.get('FLASK_ENV') != 'production'
+    
     print(f"🚀 Sistema iniciado!")
     print(f"📊 Banco de dados: {DATABASE}")
-    print(f"🌐 Acesse: http://localhost:5000")
+    print(f"🌐 Acesse: http://localhost:{port}")
     print(f"👤 Login padrão: admin / admin123")
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    print(f"🔧 Debug: {debug}")
+    
+    app.run(debug=debug, host='0.0.0.0', port=port)
 
